@@ -6,8 +6,11 @@ var sass = require('gulp-sass');
 var babel = require('gulp-babel');
 var nodemon = require('gulp-nodemon');
 var browserify = require("browserify");
+var concat = require("gulp-concat");
+var watchify = require('watchify');
+var babelify = require('babelify');
 
-gulp.task('default', ['sass', 'sass:watch', 'babel', 'babel:watch', 'build', 'build:watch', 'start']);
+gulp.task('default', ['sass', 'sass:watch', 'concat', 'concat:watch', 'build', 'watch', 'start']);
 
 gulp.task('sass', function () {
   //wildcard search for files
@@ -23,35 +26,45 @@ gulp.task('sass:watch', function () {
   gulp.watch('./client/scss/**/*.scss', ['sass']);
 });
 
-gulp.task('babel', function() {
+gulp.task('concat', function() {
   return gulp.src('./client/js/**/*.js')
-      .pipe(sourcemaps.init())
-      .pipe(babel({
-          presets: ['es2015', 'react'] // only es2015 preset now. React later.
-      }))
-      .pipe(sourcemaps.write('.'))
-      .pipe(gulp.dest('public'));
+    .pipe(concat('all.js'))
+    .pipe(gulp.dest('./client/concat'));
 });
 
-gulp.task('babel:watch', function () {
-  gulp.watch('./client/js/**/*.js', ['babel']);
+gulp.task('concat:watch', function() {
+  gulp.watch('./client/js/**/*.js', ['concat']);
 });
 
-gulp.task('build', function () {
+function compile(watch) {
+  var bundler = watchify(browserify('./client/concat/all.js', { debug: true }).transform(babelify, {presets: ["es2015", "react"]}));
 
-  return browserify({
-    entries: "./public/script.js"
-  }).bundle()
-    .pipe(source('./bundle.js'))
-    .pipe(buffer())
-    .pipe(sourcemaps.init({loadMaps: true}))
-    .pipe(sourcemaps.write('.'))
-    .pipe(gulp.dest('./public'));
-});
+  function rebundle() {
+    bundler.bundle()
+      .on('error', function(err) { console.error(err); this.emit('end'); })
+      .pipe(source('build.js'))
+      .pipe(buffer())
+      .pipe(sourcemaps.init({ loadMaps: true }))
+      .pipe(sourcemaps.write('./'))
+      .pipe(gulp.dest('./public'));
+  }
 
-gulp.task('build:watch', function() {
-  gulp.watch('./public/script.js', ['build']);
-});
+  if (watch) {
+    bundler.on('update', function() {
+      console.log('-> bundling...');
+      rebundle();
+    });
+  }
+
+  rebundle();
+}
+
+function watch() {
+  return compile(true);
+};
+
+gulp.task('build', function() { return compile(); });
+gulp.task('watch', function() { return watch(); });
 
 gulp.task('start', function () {
   nodemon({

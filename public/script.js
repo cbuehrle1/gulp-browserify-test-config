@@ -35,7 +35,16 @@ var AppComponent = function (_React$Component) {
       return _react2.default.createElement(
         'div',
         null,
-        'React works!'
+        _react2.default.createElement(
+          'p',
+          null,
+          'React works!'
+        ),
+        _react2.default.createElement(
+          'p',
+          null,
+          'Build is working'
+        )
       );
     }
   }]);
